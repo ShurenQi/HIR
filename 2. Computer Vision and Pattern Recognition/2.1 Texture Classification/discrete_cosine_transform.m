@@ -1,0 +1,74 @@
+%%
+close all;
+clear all;
+clc;
+warning('off');
+addpath(genpath(pwd));
+dbstop if error
+%% Parameters 
+NB = 90;
+%% Texture Images
+location = fullfile(pwd,'KTH_TIPS');
+Imds = imageDatastore(location,'IncludeSubFolders',true,'FileExtensions','.png','LabelSource','foldernames');
+rng(100)
+Imds = shuffle(Imds);
+[trainImds,testImds] = splitEachLabel(Imds,0.8);
+countEachLabel(trainImds)
+countEachLabel(testImds)
+%% Texture Featuring with DCT
+figure;
+for np = 1:20
+    subplot(4,5,np)
+    im = read(testImds);
+    imagesc(im);    
+    colormap gray; axis off;
+end
+t = tic;
+Ttrain = tall(trainImds);
+Ttest = tall(testImds);
+trainfeatures = cellfun(@(x)feature_extraction_dct(x,NB),Ttrain,'Uni',0);
+testfeatures = cellfun(@(x)feature_extraction_dct(x,NB),Ttest,'Uni',0);
+Trainf = gather(trainfeatures);
+trainfeatures = cat(2,Trainf{:});
+Testf = gather(testfeatures);
+testfeatures = cat(2,Testf{:});
+Time = toc(t);
+%% Texture Classification with PCA Model
+model = PCAModel(trainfeatures,30,trainImds.Labels);
+predlabels = PCAClassifier(testfeatures,model);
+Accuracy = sum(testImds.Labels == predlabels)./numel(testImds.Labels)*100;
+figure;
+cchart = confusionchart(testImds.Labels,predlabels);
+title(['DCT, accuracy = ',num2str(Accuracy),'%']);
+[avgmetrics, permetrics] = multiclass_metrics_special(cchart.NormalizedValues);
+clc;
+disp(table(Time,...
+    'RowNames',{'Time'},'VariableNames',{'Seconds'}));
+disp(table([avgmetrics.Accuracy;avgmetrics.Recall;avgmetrics.Precision;avgmetrics.F1_score]*100,...
+    'RowNames',{'Accuracy';'Recall';'Precision';'F1'},'VariableNames',{'Avg. metrics'}));
+disp(table(permetrics.F1_score*100,...
+    'RowNames',categories(cchart.ClassLabels),'VariableNames',{'F1 per class'}));
+%% Texture Classification under Orientation and Flipping Changes
+testImds.ReadFcn = @customreader_imgeo;
+reset(testImds);
+figure;
+for np = 1:20
+    subplot(4,5,np)
+    im = read(testImds);
+    imagesc(im);    
+    colormap gray; axis off;
+end
+Ttest = tall(testImds);
+testfeatures = cellfun(@(x)feature_extraction_dct(x,NB),Ttest,'Uni',0);
+Testf = gather(testfeatures);
+testfeatures = cat(2,Testf{:});
+predlabels = PCAClassifier(testfeatures,model);
+accuracy = sum(testImds.Labels == predlabels)./numel(testImds.Labels)*100;
+figure;
+cchart = confusionchart(testImds.Labels,predlabels);
+title(['DCT, accuracy = ',num2str(accuracy),'%']);
+[avgmetrics, permetrics] = multiclass_metrics_special(cchart.NormalizedValues);
+disp(table([avgmetrics.Accuracy;avgmetrics.Recall;avgmetrics.Precision;avgmetrics.F1_score]*100,...
+    'RowNames',{'Accuracy';'Recall';'Precision';'F1'},'VariableNames',{'Avg. metrics'}));
+disp(table(permetrics.F1_score*100,...
+    'RowNames',categories(cchart.ClassLabels),'VariableNames',{'F1 per class'}));
