@@ -1,6 +1,6 @@
 # Hierarchical Invariant Representation
 This repository is an implementation of the method in  
-"Hierarchical invariance for robust and interpretable vision tasks at larger scales", *Under review*, 2024.  
+"Transparent vision: A theory of hierarchical invariant representations", *ICCV*, 2025.  
 Code implemented by Shuren Qi ( i@srqi.email ). All rights reserved.
 
 ## Overview
